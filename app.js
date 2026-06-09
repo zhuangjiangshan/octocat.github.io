@@ -219,26 +219,22 @@ async function submitPhrase(phrase) {
     return;
   }
 
-  const activeNode = getActiveNode();
-  if (state.nodes.length > 0 && activeNode) {
+  if (state.nodes.length > 0) {
+    const position = findIndependentRootPosition();
     const manualNode = createNode({
       zh: phrase,
-      en: "custom seed",
-      x: activeNode.x,
-      y: activeNode.y,
-      level: activeNode.level + 1,
-      parentId: activeNode.id,
+      en: "source phrase",
+      x: position.x,
+      y: position.y,
+      level: 0,
+      parentId: "",
       seed: phrase,
     });
-    const position = findOpenPosition(activeNode, 1, 0);
-    manualNode.x = position.x;
-    manualNode.y = position.y;
     state.nodes.push(manualNode);
-    state.links.push({ from: activeNode.id, to: manualNode.id });
     state.activeId = manualNode.id;
     state.jumpNodeId = manualNode.id;
     render();
-    await expandNode(manualNode.id, { source: "input" });
+    await expandNode(manualNode.id, { source: "root" });
     return;
   }
 
@@ -1499,6 +1495,38 @@ function findOpenPosition(parent, total, index) {
   return {
     x: round(x),
     y: round(y),
+  };
+}
+
+function findIndependentRootPosition() {
+  const base = screenToWorld(window.innerWidth / 2, window.innerHeight * 0.46);
+  const minDistance = 440;
+
+  if (!state.nodes.some((node) => distance(node.x, node.y, base.x, base.y) < minDistance)) {
+    return {
+      x: round(base.x),
+      y: round(base.y),
+    };
+  }
+
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+  for (let attempt = 0; attempt < 48; attempt += 1) {
+    const angle = -Math.PI / 12 + attempt * goldenAngle;
+    const radius = 360 + Math.floor(attempt / 8) * 190;
+    const x = base.x + Math.cos(angle) * radius;
+    const y = base.y + Math.sin(angle) * radius;
+    const tooClose = state.nodes.some((node) => distance(node.x, node.y, x, y) < minDistance);
+    if (!tooClose) {
+      return {
+        x: round(x),
+        y: round(y),
+      };
+    }
+  }
+
+  return {
+    x: round(base.x + 520),
+    y: round(base.y),
   };
 }
 
